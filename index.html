@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Crédito con Amortización</title>
+    <!-- Carga de Tailwind CSS para un diseño moderno y adaptable -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <style>
+        /* Usamos la fuente Inter para un aspecto más limpio */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        /* Pequeño ajuste para que los campos numéricos se vean bien */
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* Animación para la aparición de los resultados */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex justify-center items-center min-h-screen p-4">
+
+<div class="container bg-white p-6 sm:p-8 rounded-2xl shadow-lg w-full max-w-4xl">
+    <h1 class="text-3xl font-bold text-gray-700 text-center mb-6">Simulador de Crédito</h1>
+
+    <!-- Formulario de entrada de datos -->
+    <form id="credit-form" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="form-group">
+            <label for="capital" class="block mb-2 font-semibold text-gray-600">Monto del Capital ($)</label>
+            <input type="number" id="capital" placeholder="Ej: 2500" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+        <div class="form-group">
+            <label for="fechaPrestamo" class="block mb-2 font-semibold text-gray-600">Fecha del Préstamo</label>
+            <input type="date" id="fechaPrestamo" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+        <div class="form-group">
+            <label for="plazo" class="block mb-2 font-semibold text-gray-600">Plazo (en meses)</label>
+            <input type="number" id="plazo" placeholder="Ej: 12" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+        <div class="form-group">
+            <label for="interes" class="block mb-2 font-semibold text-gray-600">Interés Mensual (%)</label>
+            <input type="number" id="interes" placeholder="Ej: 1.5" step="0.01" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+        <div class="md:col-span-2">
+             <button type="button" id="calculateBtn" class="w-full p-4 bg-blue-600 text-white rounded-lg font-bold text-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 ease-in-out shadow-md hover:shadow-lg">
+                Calcular Amortización
+            </button>
+        </div>
+    </form>
+    
+    <!-- Contenedor para mostrar mensajes de error -->
+    <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
+        <strong class="font-bold">Error:</strong>
+        <span class="block sm:inline" id="error-text"></span>
+    </div>
+
+    <!-- Sección de Resultados y Tabla de Amortización (inicialmente oculta) -->
+    <div id="output-section" class="hidden">
+        <!-- Resumen del Crédito -->
+        <div id="results" class="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-700 text-center mb-6">Resumen del Crédito</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-lg">
+                <p class="bg-blue-50 p-4 rounded-lg flex justify-between">Cuota Fija: <span id="resultMensual" class="font-bold text-blue-600"></span></p>
+                <p class="bg-green-50 p-4 rounded-lg flex justify-between">Total a Pagar: <span id="resultTotalPagar" class="font-bold text-green-600"></span></p>
+                <p class="bg-yellow-50 p-4 rounded-lg flex justify-between">Interés Total: <span id="resultInteresTotal" class="font-bold text-yellow-600"></span></p>
+                <p class="bg-purple-50 p-4 rounded-lg flex justify-between">Gastos Adm.: <span id="resultGastos" class="font-bold text-purple-600"></span></p>
+            </div>
+             <div class="mt-6 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                <p class="flex flex-col items-center text-center"><strong>Fecha Base:</strong> <span id="resultFechaBase"></span></p>
+                <p class="flex flex-col items-center text-center"><strong>Primer Pago:</strong> <span id="resultPrimerPago"></span></p>
+                <p class="flex flex-col items-center text-center"><strong>Fin de Crédito:</strong> <span id="resultFinCredito"></span></p>
+                 <p class="flex flex-col items-center text-center"><strong>Duración (días):</strong> <span id="resultDiasPasados"></span></p>
+            </div>
+        </div>
+
+        <!-- Tabla de Amortización -->
+        <div id="amortization-section">
+            <h2 class="text-2xl font-bold text-gray-700 text-center mb-4">Tabla de Amortización</h2>
+            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-md">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs text-white uppercase bg-gray-700">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-center">N°</th>
+                            <th scope="col" class="px-6 py-3 text-center">Fecha Pago</th>
+                            <th scope="col" class="px-6 py-3 text-right">Cuota Fija</th>
+                            <th scope="col" class="px-6 py-3 text-right">Capital</th>
+                            <th scope="col" class="px-6 py-3 text-right">Interés</th>
+                            <th scope="col" class="px-6 py-3 text-right">Gastos Adm.</th>
+                            <th scope="col" class="px-6 py-3 text-right">Saldo Pendiente</th>
+                        </tr>
+                    </thead>
+                    <tbody id="amortization-table-body">
+                        <!-- Las filas se generarán dinámicamente aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Referencias a los elementos del DOM
+    const calculateBtn = document.getElementById('calculateBtn');
+    const creditForm = document.getElementById('credit-form');
+    const outputSection = document.getElementById('output-section');
+    const errorMessageDiv = document.getElementById('error-message');
+    const errorTextSpan = document.getElementById('error-text');
+
+    // --- FUNCIONES DE FORMATO ---
+    // Formatea un número a moneda local (USD para Ecuador)
+    const formatCurrency = (value) => new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(value);
+    // Formatea un objeto Date a un string legible
+    const formatDate = (date) => date.toLocaleDateString('es-EC', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Función para mostrar errores
+    const showError = (message) => {
+        errorTextSpan.textContent = message;
+        errorMessageDiv.classList.remove('hidden');
+        outputSection.classList.add('hidden'); // Ocultar resultados si hay error
+    };
+
+    // Función para ocultar errores
+    const hideError = () => {
+        errorMessageDiv.classList.add('hidden');
+    };
+
+    // Evento principal al hacer clic en el botón de calcular
+    calculateBtn.addEventListener('click', () => {
+        hideError(); // Ocultar errores previos
+        outputSection.classList.add('hidden'); // Ocultar resultados antiguos
+
+        // --- 1. LEER Y VALIDAR DATOS DE ENTRADA ---
+        const capital = parseFloat(document.getElementById('capital').value);
+        const fechaPrestamoStr = document.getElementById('fechaPrestamo').value;
+        const plazo = parseInt(document.getElementById('plazo').value);
+        const interesMensualPorcentaje = parseFloat(document.getElementById('interes').value);
+
+        // Validación de campos
+        if (!capital || capital <= 0 || !fechaPrestamoStr || !plazo || plazo <= 0 || isNaN(interesMensualPorcentaje) || interesMensualPorcentaje < 0) {
+            showError('Por favor, completa todos los campos con valores válidos.');
+            return;
+        }
+
+        // --- 2. CÁLCULOS PRINCIPALES DEL CRÉDITO ---
+        // Conversión y ajuste de fechas en UTC para evitar problemas de zona horaria
+        const fechaPrestamoParts = fechaPrestamoStr.split('-').map(Number);
+        const fechaPrestamo = new Date(Date.UTC(fechaPrestamoParts[0], fechaPrestamoParts[1] - 1, fechaPrestamoParts[2]));
+        
+        // Determinar la fecha base de cálculo (día 15 del mes)
+        const fechaBase = new Date(fechaPrestamo.getTime());
+        if (fechaBase.getUTCDate() <= 17) {
+            fechaBase.setUTCDate(15);
+        } else {
+            fechaBase.setUTCMonth(fechaBase.getUTCMonth() + 1);
+            fechaBase.setUTCDate(15);
+        }
+        
+        // Calcular fecha del primer pago y fecha de fin de crédito
+        const fechaPrimerPago = new Date(fechaBase.getTime());
+        fechaPrimerPago.setUTCMonth(fechaPrimerPago.getUTCMonth() + 1);
+
+        const finCredito = new Date(fechaBase.getTime());
+        finCredito.setUTCMonth(finCredito.getUTCMonth() + plazo);
+
+        // Calcular la duración exacta del crédito en días
+        const unDiaEnMilisegundos = 1000 * 60 * 60 * 24;
+        const diasPasados = Math.round((finCredito.getTime() - fechaPrestamo.getTime()) / unDiaEnMilisegundos);
+
+        // Calcular gastos administrativos basados en el capital
+        let gastosAdministrativos = 0;
+        if (capital < 5000) gastosAdministrativos = capital * 0.038;
+        else if (capital >= 5000 && capital < 20000) gastosAdministrativos = capital * 0.023;
+        else gastosAdministrativos = capital * 0.018;
+
+        // Calcular el interés total basado en días
+        const interesMensualDecimal = interesMensualPorcentaje / 100;
+        const tasaAnual = interesMensualDecimal * 12;
+        const tasaDiaria = tasaAnual / 365; // Usar 365 días para el cálculo
+        const totalInteres = capital * tasaDiaria * diasPasados;
+        
+        // Calcular la cuota mensual fija (redondeada hacia arriba)
+        const totalPagarTeorico = capital + totalInteres + gastosAdministrativos;
+        const pagoMensualCalculado = totalPagarTeorico / plazo;
+        const pagoMensualFinal = Math.ceil(pagoMensualCalculado);
+
+        // --- 3. GENERAR TABLA DE AMORTIZACIÓN Y OBTENER TOTAL REAL ---
+        const { totalRealPagado, tablaHTML } = generateAmortizationTable(capital, plazo, fechaPrimerPago, pagoMensualFinal, gastosAdministrativos, totalInteres);
+        
+        // --- 4. MOSTRAR RESULTADOS Y TABLA EN LA INTERFAZ ---
+        document.getElementById('amortization-table-body').innerHTML = tablaHTML;
+
+        document.getElementById('resultMensual').textContent = formatCurrency(pagoMensualFinal);
+        document.getElementById('resultTotalPagar').textContent = formatCurrency(totalRealPagado);
+        document.getElementById('resultInteresTotal').textContent = formatCurrency(totalInteres);
+        document.getElementById('resultGastos').textContent = formatCurrency(gastosAdministrativos);
+        document.getElementById('resultFechaBase').textContent = formatDate(fechaBase);
+        document.getElementById('resultPrimerPago').textContent = formatDate(fechaPrimerPago);
+        document.getElementById('resultFinCredito').textContent = formatDate(finCredito);
+        document.getElementById('resultDiasPasados').textContent = `${diasPasados} días`;
+
+        // Mostrar las secciones de resultados con una animación
+        outputSection.classList.remove('hidden');
+        outputSection.classList.add('fade-in');
+    });
+
+    /**
+     * Genera las filas de la tabla de amortización y calcula el total real pagado.
+     * @returns {{totalRealPagado: number, tablaHTML: string}} - Objeto con el total y el HTML de la tabla.
+     */
+    function generateAmortizationTable(capital, plazo, primeraFechaPago, cuotaMensual, gastosTotales, interesTotal) {
+        let tablaHTML = '';
+        let saldoPendiente = capital;
+        const gastosPorCuota = gastosTotales / plazo;
+        const sumOfDigits = plazo * (plazo + 1) / 2; // Método de suma de dígitos para distribuir interés
+        let interesAcumulado = 0;
+        let totalPagadoReal = 0;
+
+        for (let i = 1; i <= plazo; i++) {
+            let cuotaDeEsteMes = cuotaMensual;
+            
+            // Distribución del interés de forma decreciente (método de suma de dígitos)
+            const interesDelMes = (sumOfDigits > 0) ? interesTotal * ((plazo - i + 1) / sumOfDigits) : 0;
+            interesAcumulado += interesDelMes;
+            
+            let capitalPagado = cuotaDeEsteMes - interesDelMes - gastosPorCuota;
+
+            // Ajuste para la última cuota para que el saldo sea exactamente cero
+            if (i === plazo) {
+                const interesRestante = interesTotal - (interesAcumulado - interesDelMes);
+                capitalPagado = saldoPendiente;
+                cuotaDeEsteMes = capitalPagado + interesRestante + gastosPorCuota;
+            }
+
+            saldoPendiente -= capitalPagado;
+            
+            // Corrección por si quedan centavos
+            if (saldoPendiente < 0.01) saldoPendiente = 0;
+
+            totalPagadoReal += cuotaDeEsteMes;
+
+            const fechaDePago = new Date(primeraFechaPago.getTime());
+            fechaDePago.setUTCMonth(primeraFechaPago.getUTCMonth() + i - 1);
+            
+            // Clases de Tailwind para dar estilo a las filas
+            const rowClass = i % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+
+            tablaHTML += `
+                <tr class="${rowClass} border-b hover:bg-blue-50 transition-colors">
+                    <td class="px-6 py-4 font-medium text-gray-900 text-center">${i}</td>
+                    <td class="px-6 py-4 text-center">${formatDate(fechaDePago)}</td>
+                    <td class="px-6 py-4 text-right">${formatCurrency(cuotaDeEsteMes)}</td>
+                    <td class="px-6 py-4 text-right">${formatCurrency(capitalPagado)}</td>
+                    <td class="px-6 py-4 text-right">${formatCurrency(interesDelMes)}</td>
+                    <td class="px-6 py-4 text-right">${formatCurrency(gastosPorCuota)}</td>
+                    <td class="px-6 py-4 font-bold text-gray-800 text-right">${formatCurrency(saldoPendiente)}</td>
+                </tr>
+            `;
+        }
+        
+        return { totalRealPagado: totalRealPagado, tablaHTML: tablaHTML };
+    }
+});
+</script>
+
+</body>
+</html>
